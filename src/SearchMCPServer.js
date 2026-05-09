@@ -6,6 +6,7 @@ class SearchMCPServer {
   constructor(options = {}) {
     this.searchManager = new SearchManager(options);
     this.deepSearch = new DeepSearch(options);
+    this.currentLanguage = options.locale || 'ja-JP'; // Default to ja-JP
     this.tools = [
       {
         name: 'search',
@@ -21,6 +22,10 @@ class SearchMCPServer {
               type: 'string',
               description: 'The search engine to use (google, bing, duckduckgo)',
               default: 'google'
+            },
+            language: {
+              type: 'string',
+              description: 'Optional language/locale override for this search (e.g., "en-US", "ja-JP")'
             }
           },
           required: ['keyword']
@@ -43,6 +48,10 @@ class SearchMCPServer {
               },
               description: 'List of search engines to use (google, bing, duckduckgo, yahoojapan)',
               default: ['google', 'bing', 'duckduckgo', 'yahoojapan']
+            },
+            language: {
+              type: 'string',
+              description: 'Optional language/locale override for this search (e.g., "en-US", "ja-JP")'
             }
           },
           required: ['keyword']
@@ -75,6 +84,10 @@ class SearchMCPServer {
               type: 'number',
               description: 'Number of parallel page parsers to use',
               default: 3
+            },
+            language: {
+              type: 'string',
+              description: 'Optional language/locale override for this search (e.g., "en-US", "ja-JP")'
             }
           },
           required: ['keyword']
@@ -87,6 +100,20 @@ class SearchMCPServer {
           type: 'object',
           properties: {}
         }
+      },
+      {
+        name: 'set_language',
+        description: 'Set the language/locale for search results (affects all subsequent searches)',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            language: {
+              type: 'string',
+              description: 'Language/locale code (e.g., "en-US", "ja-JP", "zh-CN", "ko-KR")'
+            }
+          },
+          required: ['language']
+        }
       }
     ];
   }
@@ -95,15 +122,24 @@ class SearchMCPServer {
     try {
       switch (toolName) {
         case 'search':
+          if (args.language) {
+            await this.setLanguage(args.language);
+          }
           return await this.searchManager.search(args.keyword, args.engine || 'google');
         
         case 'search_multiple':
+          if (args.language) {
+            await this.setLanguage(args.language);
+          }
           return await this.searchManager.searchMultipleEngines(
             args.keyword, 
             args.engines || ['google', 'bing', 'duckduckgo', 'yahoojapan']
           );
         
         case 'deep_search':
+          if (args.language) {
+            await this.setLanguage(args.language);
+          }
           return await this.deepSearch.deepSearch(args.keyword, {
             engines: args.engines || ['google'],
             maxResultsPerEngine: args.maxResultsPerEngine || 5,
@@ -115,11 +151,47 @@ class SearchMCPServer {
             engines: this.searchManager.getAvailableEngines()
           };
         
+        case 'set_language':
+          return await this.setLanguage(args.language);
+        
         default:
           throw new Error(`Unknown tool: ${toolName}`);
       }
     } catch (error) {
       console.error(`Error handling tool call ${toolName}:`, error.message);
+      throw error;
+    }
+  }
+
+  async setLanguage(language) {
+    try {
+      console.log(`Changing language to: ${language}`);
+      this.currentLanguage = language;
+      
+      // Update the browser manager locale in both searchManager and deepSearch
+      if (this.searchManager.searchEngines) {
+        for (const engine of Object.values(this.searchManager.searchEngines)) {
+          if (engine.browserManager) {
+            engine.browserManager.locale = language;
+          }
+        }
+      }
+      
+      if (this.deepSearch.browserManager) {
+        this.deepSearch.browserManager.locale = language;
+      }
+      
+      // Recreate engines in deepSearch to apply new locale
+      this.deepSearch.engines = {};
+      
+      console.log(`Language successfully changed to: ${language}`);
+      return {
+        success: true,
+        language: language,
+        message: `Language set to ${language}`
+      };
+    } catch (error) {
+      console.error(`Error setting language:`, error.message);
       throw error;
     }
   }
