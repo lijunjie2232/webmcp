@@ -1,5 +1,31 @@
 {
+  "name": "webmcp",
+  "version": "1.0.0",
+  "description": "Search MCP Server with multiple search engine support and deep search functionality",
+  "main": "src/SearchMCPServer.js",
   "type": "module",
+  "scripts": {
+    "start": "node src/SearchMCPServer.js",
+    "test": "node tests/test-deep-search-mcp.js",
+    "test:deep-search": "node tests/test-deep-search.js",
+    "test:language": "node tests/test-language-change.js",
+    "test:language-comprehensive": "node tests/test-language-comprehensive.js",
+    "test:language-examples": "node tests/test-language-examples.js",
+    "docs:build": "bash build_docs.sh",
+    "docs:serve": "cd docs && mkdocs serve"
+  },
+  "keywords": [
+    "mcp",
+    "search",
+    "google",
+    "bing",
+    "duckduckgo",
+    "yahoo-japan",
+    "deep-search",
+    "browser-automation"
+  ],
+  "author": "lijunjie2232",
+  "license": "GPL-3.0",
   "dependencies": {
     "cloakbrowser": "^0.3.27",
     "playwright-core": "^1.59.1"
