@@ -21,7 +21,7 @@ To use WebMCP as an MCP server, add it to your MCP configuration file:
 
 ## Available Tools
 
-WebMCP provides 5 main tools for search operations:
+WebMCP provides 6 main tools for search operations:
 
 ### 1. search
 
@@ -93,6 +93,43 @@ Set the language/locale for search results.
 ```javascript
 await server.handleToolCall('set_language', { language: 'ja-JP' });
 ```
+
+### 6. parse_page
+
+Parse a web page URL and extract its cleaned text content, optimized for LLM processing. This tool fetches the page, removes unnecessary elements (scripts, styles, navigation, etc.), and extracts the main content.
+
+**Parameters:**
+- `url` (required): The URL of the page to parse
+- `maxContentLength` (optional): Maximum length of extracted content (default: 50000)
+- `parseTimeout` (optional): Timeout for parsing in milliseconds (default: 60000)
+
+**Returns:**
+- `title`: Page title
+- `content`: Cleaned text content
+- `url`: The parsed URL
+- `statusCode`: HTTP status code
+
+**Features:**
+- Automatically blocks images, media, fonts, and other non-essential resources for faster loading
+- Extracts main content area using intelligent selectors
+- Removes consecutive duplicate lines and filters empty lines
+- Supports retry logic for failed requests
+- Content is truncated if it exceeds maxContentLength
+
+**Example:**
+```javascript
+await server.handleToolCall('parse_page', { 
+  url: 'https://example.com/article',
+  maxContentLength: 30000,
+  parseTimeout: 45000
+});
+```
+
+**Use Cases:**
+- Extract article content for summarization
+- Get clean text from web pages for RAG applications
+- Parse documentation or blog posts
+- Content analysis and processing
 
 ## LangChain Integration
 
