@@ -7,9 +7,7 @@ repo_name: lijunjie2232/webmcp
 
 theme:
   name: material
-  language: en
   features:
-    - navigation.instant
     - navigation.tracking
     - navigation.tabs
     - navigation.sections
@@ -32,6 +30,27 @@ theme:
         icon: material/brightness-4
         name: Switch to light mode
 
+plugins:
+  - search
+  - i18n:
+      docs_structure: folder
+      languages:
+        - locale: en
+          name: English
+          nav_translations:
+            Home: Home
+            Installation: Installation
+            Usage: Usage
+            Development: Development
+        - locale: ja
+          name: Japanese
+          default: true
+          nav_translations:
+            Home: ホーム
+            Installation: インストール
+            Usage: 使い方
+            Development: 開発
+
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
@@ -49,13 +68,6 @@ extra:
     - icon: fontawesome/brands/github
       link: https://github.com/lijunjie2232/webmcp
   generator: false
-  alternate:
-    - name: English
-      link: /en/ 
-      lang: en
-    - name: Japanese
-      link: /ja/
-      lang: ja
 
 nav:
   - Home: index.md
