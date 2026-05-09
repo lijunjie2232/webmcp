@@ -1,0 +1,64 @@
+site_name: WebMCP Documentation
+site_author: lijunjie2232
+copyright: Copyright &copy; 2024 lijunjie2232 - GNU GPL v3.0
+
+repo_url: https://github.com/lijunjie2232/webmcp
+repo_name: lijunjie2232/webmcp
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - search.highlight
+    - search.share
+    - content.code.copy
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - admonition
+  - pymdownx.details
+  - tables
+  - attr_list
+  - md_in_html
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/lijunjie2232/webmcp
+  generator: false
+  alternate:
+    - name: English
+      link: /en/ 
+      lang: en
+    - name: Japanese
+      link: /ja/
+      lang: ja
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Usage: usage.md
+  - Development: development.md
