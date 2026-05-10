@@ -1,15 +1,165 @@
 # 使用方法
 
-WebMCPをMCPサーバーとして使用する方法を説明します。
+WebMCPをコマンドラインツールおよびMCPサーバーとして使用する方法を説明します。
+
+## CLIクイックスタート
+
+WebMCPは、コードを書かずにすばやく検索できる便利なコマンドラインインターフェースを提供します。
+
+### インストール
+
+```bash
+npm install -g webmcp
+```
+
+またはnpxで直接使用:
+
+```bash
+npx webmcp <command>
+```
+
+### CLIコマンド
+
+#### 1. serve - MCPサーバー起動
+
+MCPクライアントと統合するためのstdioモードでMCPサーバーを起動:
+
+```bash
+npx webmcp serve
+```
+
+これはMCPクライアント設定ファイルでWebMCPを設定する際に使用します。
+
+#### 2. search - クイック検索
+
+指定した検索エンジンでキーワードを検索:
+
+```bash
+# 基本検索（デフォルトはGoogle）
+npx webmcp search "人工知能"
+
+# 検索エンジンを指定
+npx webmcp search "機械学習" google
+
+# 言語オプション付き
+npx webmcp search "AI研究" google --language ja-JP
+```
+
+**オプション:**
+- `keyword`（必須）: 検索語
+- `engine`（オプション）: 検索エンジン（google, bing, duckduckgo, yahoojapan）。デフォルト: google
+- `--language <locale>`（オプション）: 言語/ロケールオーバーライド（例: en-US, ja-JP, zh-CN）
+
+#### 3. deep-search - ディープコンテンツ検索
+
+検索結果のページを解析して完全なコンテンツを抽出するディープ検索を実行:
+
+```bash
+# 基本ディープ検索
+npx webmcp deep-search "気候変動"
+
+# 複数のエンジンとオプション付き
+npx webmcp deep-search "再生可能エネルギー" \
+  --engines google,bing \
+  --max-results 5 \
+  --parsers 3
+
+# 言語設定付き
+npx webmcp deep-search "技術トレンド" \
+  --language ja-JP \
+  --engines google \
+  --max-results 3
+```
+
+**オプション:**
+- `keyword`（必須）: 検索語
+- `--engines <list>`（オプション）: カンマ区切りのエンジンリスト。デフォルト: google
+- `--max-results <n>`（オプション）: エンジンあたりの最大結果数。デフォルト: 3
+- `--parsers <n>`（オプション）: 並列パーサー数。デフォルト: 3
+- `--language <locale>`（オプション）: 言語/ロケールオーバーライド
+
+#### 4. engines - 利用可能なエンジン一覧
+
+サポートされているすべての検索エンジンを表示:
+
+```bash
+npx webmcp engines
+```
+
+**出力:**
+```
+Available search engines:
+  - google
+  - bing
+  - duckduckgo
+  - yahoojapan
+```
+
+### CLI例
+
+```bash
+# ヘルプ表示
+npx webmcp
+
+# 英語で検索
+npx webmcp search "web development" google --language en-US
+
+# 複数のエンジンでディープ検索
+npx webmcp deep-search "ブロックチェーン技術" \
+  --engines google,bing,duckduckgo \
+  --max-results 4 \
+  --parsers 2
+
+# 日本語検索
+npx webmcp search "人工知能" google --language ja-JP
+```
+
+---
 
 ## MCPサーバー設定
+
+### npxを使用（推奨）
+
+WebMCPをMCPサーバーとして使用する最も簡単な方法はnpxを使うことです。MCP設定ファイルに追加:
 
 ```json
 {
   "mcpServers": {
-    "search": {
+    "webmcp": {
+      "command": "npx",
+      "args": ["-y", "webmcp", "serve"]
+    }
+  }
+}
+```
+
+**注意:** `-y`フラグはプロンプトを自動的に承認し、`serve`はstdioモードでサーバーを起動します。
+
+### ローカルインストールを使用
+
+WebMCPをローカルにインストールしている場合、直接参照できます:
+
+```json
+{
+  "mcpServers": {
+    "webmcp": {
       "command": "node",
-      "args": ["/path/to/webmcp/src/SearchMCPServer.js"]
+      "args": ["/absolute/path/to/webmcp/bin/webmcp.js", "serve"]
+    }
+  }
+}
+```
+
+### フルパス設定
+
+本番環境では、npxへのフルパスを使用することをお勧めします:
+
+```json
+{
+  "mcpServers": {
+    "webmcp": {
+      "command": "/usr/local/bin/npx",
+      "args": ["-y", "webmcp", "serve"]
     }
   }
 }

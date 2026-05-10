@@ -2,9 +2,24 @@
 
 This guide will help you set up WebMCP on your system.
 
+## Quick Start (CLI Mode)
+
+For quick usage without cloning the repository, you can use WebMCP directly via npx:
+
+```bash
+# Use directly with npx (no installation needed)
+npx webmcp search "keyword"
+
+# Or install globally
+npm install -g webmcp
+webmcp search "keyword"
+```
+
+See the [Usage Guide](usage.md) for more CLI commands.
+
 ## Prerequisites
 
-Before installing WebMCP, ensure you have the following installed:
+Before installing WebMCP from source, ensure you have the following installed:
 
 - **Node.js** (version 18 or higher)
 - **npm** or **yarn** package manager
