@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Search MCP Server with multiple search engine support and deep search functionality",
   "main": "src/SearchMCPServer.js",
+  "bin": {
+    "webmcp": "./bin/webmcp.js"
+  },
   "type": "module",
   "scripts": {
     "start": "node src/SearchMCPServer.js",
@@ -11,7 +14,7 @@
     "test:language": "node tests/test-language-change.js",
     "test:language-comprehensive": "node tests/test-language-comprehensive.js",
     "test:language-examples": "node tests/test-language-examples.js",
-    "docs:build": "bash build_docs.sh",
+    "docs:build": "cd docs && mkdocs build",
     "docs:serve": "cd docs && mkdocs serve"
   },
   "keywords": [
