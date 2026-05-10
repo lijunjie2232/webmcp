@@ -8,13 +8,29 @@ WebMCP is an MCP (Model Context Protocol) server that provides advanced search c
 
 - **Multiple Search Engines**: Google, Bing, DuckDuckGo, Yahoo Japan
 - **Deep Search**: Parse result pages to extract full content
+- **Page Parser Tool**: Extract clean text from URLs
 - **Language Support**: Set any language/locale for search results
 - **Parallel Processing**: Parse multiple pages simultaneously
 - **Resource Optimization**: Block unnecessary resources for faster loading
 
 ## Quick Start
 
+### Use with CLI (Recommended)
+
 ```bash
+# Use directly with npx
+npx webmcp search "keyword"
+
+# Or install globally
+npm install -g webmcp
+webmcp deep-search "artificial intelligence" --engines google,bing
+```
+
+### Use from Source
+
+```bash
+git clone <repository-url>
+cd webmcp
 npm install
 ```
 
