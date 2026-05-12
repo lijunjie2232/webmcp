@@ -1,4 +1,15 @@
 import { launch } from 'cloakbrowser';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Project root is 3 levels up from this file (third/webmcp/src/)
+const PROJECT_ROOT = path.resolve(__dirname, '../');
+const BROWSER_DIR = path.join(PROJECT_ROOT, 'browser');
+const CLOAKBROWSER_PATH = path.join(BROWSER_DIR, 'cloakbrowser', 'chrome');
 
 class BrowserManager {
   constructor(options = {}) {
@@ -13,7 +24,18 @@ class BrowserManager {
   async initialize() {
     if (!this.browser) {
       console.log('Launching browser with cloakbrowser...');
-      this.browser = await launch();
+      
+      // Check if custom CloakBrowser binary exists
+      if (fs.existsSync(CLOAKBROWSER_PATH)) {
+        console.log(`Using custom CloakBrowser binary: ${CLOAKBROWSER_PATH}`);
+        this.browser = await launch({
+          executablePath: CLOAKBROWSER_PATH
+        });
+      } else {
+        console.log('Custom binary not found, using default cloakbrowser...');
+        this.browser = await launch();
+      }
+      
       console.log('Browser launched successfully');
     }
     return this.browser;
