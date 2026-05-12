@@ -11,3 +11,5 @@ node_modules/
 debug/
 .venv/
 docs/site/
+
+browser/
