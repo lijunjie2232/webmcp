@@ -16,9 +16,13 @@ class SearchMCPServer {
         inputSchema: {
           type: 'object',
           properties: {
+            query: {
+              type: 'string',
+              description: 'The search query/keyword'
+            },
             keyword: {
               type: 'string',
-              description: 'The search keyword'
+              description: 'The search keyword (alternative to query)'
             },
             engine: {
               type: 'string',
@@ -30,7 +34,7 @@ class SearchMCPServer {
               description: 'Optional language/locale override for this search (e.g., "en-US", "ja-JP")'
             }
           },
-          required: ['keyword']
+          required: []
         }
       },
       {
@@ -39,9 +43,13 @@ class SearchMCPServer {
         inputSchema: {
           type: 'object',
           properties: {
+            query: {
+              type: 'string',
+              description: 'The search query/keyword'
+            },
             keyword: {
               type: 'string',
-              description: 'The search keyword'
+              description: 'The search keyword (alternative to query)'
             },
             engines: {
               type: 'array',
@@ -56,7 +64,7 @@ class SearchMCPServer {
               description: 'Optional language/locale override for this search (e.g., "en-US", "ja-JP")'
             }
           },
-          required: ['keyword']
+          required: []
         }
       },
       {
@@ -65,9 +73,13 @@ class SearchMCPServer {
         inputSchema: {
           type: 'object',
           properties: {
+            query: {
+              type: 'string',
+              description: 'The search query/keyword'
+            },
             keyword: {
               type: 'string',
-              description: 'The search keyword'
+              description: 'The search keyword (alternative to query)'
             },
             engines: {
               type: 'array',
@@ -92,7 +104,7 @@ class SearchMCPServer {
               description: 'Optional language/locale override for this search (e.g., "en-US", "ja-JP")'
             }
           },
-          required: ['keyword']
+          required: []
         }
       },
       {
@@ -118,7 +130,7 @@ class SearchMCPServer {
         }
       },
       {
-        name: 'parse_page',
+        name: 'parse_url',
         description: 'Parse a web page URL and extract its content (title, text content, etc.)',
         inputSchema: {
           type: 'object',
@@ -146,30 +158,47 @@ class SearchMCPServer {
 
   async handleToolCall(toolName, args) {
     try {
+      // Normalize input: support both 'query' and 'keyword' parameters
+      const normalizedArgs = { ...args };
+      if (args.query && !args.keyword) {
+        normalizedArgs.keyword = args.query;
+      }
+      
+      // For parse_url tool, also normalize 'query' to 'url' if 'url' is not provided
+      if (toolName === 'parse_url' && args.query && !args.url) {
+        normalizedArgs.url = args.query;
+      }
+      
+      // Validate that we have a keyword for search operations
+      const requiresKeyword = ['search', 'search_multiple', 'deep_search'].includes(toolName);
+      if (requiresKeyword && !normalizedArgs.keyword) {
+        throw new Error(`Missing required parameter: 'keyword' or 'query' must be provided for ${toolName}`);
+      }
+      
       switch (toolName) {
         case 'search':
-          if (args.language) {
-            await this.setLanguage(args.language);
+          if (normalizedArgs.language) {
+            await this.setLanguage(normalizedArgs.language);
           }
-          return await this.searchManager.search(args.keyword, args.engine || 'google');
+          return await this.searchManager.search(normalizedArgs.keyword, normalizedArgs.engine || 'yahoojapan');
         
         case 'search_multiple':
-          if (args.language) {
-            await this.setLanguage(args.language);
+          if (normalizedArgs.language) {
+            await this.setLanguage(normalizedArgs.language);
           }
           return await this.searchManager.searchMultipleEngines(
-            args.keyword, 
-            args.engines || ['google', 'bing', 'duckduckgo', 'yahoojapan']
+            normalizedArgs.keyword, 
+            normalizedArgs.engines || ['google', 'bing', 'duckduckgo', 'yahoojapan']
           );
         
         case 'deep_search':
-          if (args.language) {
-            await this.setLanguage(args.language);
+          if (normalizedArgs.language) {
+            await this.setLanguage(normalizedArgs.language);
           }
-          return await this.deepSearch.deepSearch(args.keyword, {
-            engines: args.engines || ['google'],
-            maxResultsPerEngine: args.maxResultsPerEngine || 5,
-            parserNum: args.parserNum || 3
+          return await this.deepSearch.deepSearch(normalizedArgs.keyword, {
+            engines: normalizedArgs.engines || ['google'],
+            maxResultsPerEngine: normalizedArgs.maxResultsPerEngine || 5,
+            parserNum: normalizedArgs.parserNum || 3
           });
         
         case 'get_available_engines':
@@ -180,10 +209,10 @@ class SearchMCPServer {
         case 'set_language':
           return await this.setLanguage(args.language);
         
-        case 'parse_page':
-          return await this.parsePage(args.url, {
-            maxContentLength: args.maxContentLength,
-            parseTimeout: args.parseTimeout
+        case 'parse_url':
+          return await this.parsePage(normalizedArgs.url, {
+            maxContentLength: normalizedArgs.maxContentLength,
+            parseTimeout: normalizedArgs.parseTimeout
           });
         
         default:
