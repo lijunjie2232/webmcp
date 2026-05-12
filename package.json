@@ -30,7 +30,8 @@
   "author": "lijunjie2232",
   "license": "GPL-3.0",
   "dependencies": {
-    "cloakbrowser": "^0.3.27",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "cloakbrowser": "^0.3.28",
     "playwright-core": "^1.59.1"
   }
 }
