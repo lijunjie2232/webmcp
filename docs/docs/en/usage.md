@@ -240,7 +240,7 @@ Set the language/locale for search results.
 await server.handleToolCall('set_language', { language: 'ja-JP' });
 ```
 
-### 6. parse_page
+### 6. parse_url
 
 Parse a web page URL and extract its cleaned text content, optimized for LLM processing. This tool fetches the page, removes unnecessary elements (scripts, styles, navigation, etc.), and extracts the main content.
 
@@ -264,7 +264,7 @@ Parse a web page URL and extract its cleaned text content, optimized for LLM pro
 
 **Example:**
 ```javascript
-await server.handleToolCall('parse_page', { 
+await server.handleToolCall('parse_url', { 
   url: 'https://example.com/article',
   maxContentLength: 30000,
   parseTimeout: 45000

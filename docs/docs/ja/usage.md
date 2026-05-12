@@ -229,7 +229,7 @@ await server.handleToolCall('deep_search', {
 **一般的な言語コード:**
 - `en-US`, `ja-JP`, `zh-CN`, `ko-KR`
 
-### 6. parse_page
+### 6. parse_url
 
 ウェブページのURLを解析し、LLM処理に最適化されたクリーンなテキストコンテンツを抽出します。このツールはページを取得し、不要な要素（スクリプト、スタイル、ナビゲーションなど）を削除して、メインコンテンツを抽出します。
 
@@ -253,7 +253,7 @@ await server.handleToolCall('deep_search', {
 
 **例:**
 ```javascript
-await server.handleToolCall('parse_page', { 
+await server.handleToolCall('parse_url', { 
   url: 'https://example.com/article',
   maxContentLength: 30000,
   parseTimeout: 45000
