@@ -148,6 +148,21 @@ class SearchMCPServer {
               type: 'number',
               description: 'Timeout for parsing in milliseconds',
               default: 60000
+            },
+            navigationTimeout: {
+              type: 'number',
+              description: 'Timeout for page navigation in milliseconds',
+              default: 30000
+            },
+            waitUntil: {
+              type: 'string',
+              description: 'Navigation wait strategy (commit, domcontentloaded, load, networkidle)',
+              default: 'domcontentloaded'
+            },
+            headless: {
+              type: 'boolean',
+              description: 'Run browser in headless mode (true) or with visible window (false)',
+              default: true
             }
           },
           required: ['url']
@@ -212,7 +227,10 @@ class SearchMCPServer {
         case 'parse_url':
           return await this.parsePage(normalizedArgs.url, {
             maxContentLength: normalizedArgs.maxContentLength,
-            parseTimeout: normalizedArgs.parseTimeout
+            parseTimeout: normalizedArgs.parseTimeout,
+            navigationTimeout: normalizedArgs.navigationTimeout,
+            waitUntil: normalizedArgs.waitUntil,
+            headless: normalizedArgs.headless
           });
         
         default:
@@ -267,7 +285,8 @@ class SearchMCPServer {
         const BrowserManager = (await import('./BrowserManager.js')).default;
         const browserManager = new BrowserManager({
           locale: this.currentLanguage,
-          timezoneId: this.getTimezoneForLocale(this.currentLanguage)
+          timezoneId: this.getTimezoneForLocale(this.currentLanguage),
+          headless: options.headless !== undefined ? options.headless : true
         });
         await browserManager.initialize();
         
