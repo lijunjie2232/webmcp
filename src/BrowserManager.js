@@ -19,6 +19,7 @@ class BrowserManager {
     this.locale = options.locale || 'ja-JP';
     this.timezoneId = options.timezoneId || 'Asia/Tokyo';
     this.geolocation = options.geolocation || { latitude: 35.6895, longitude: 139.6917 };
+    this.headless = options.headless !== undefined ? options.headless : true; // Default to headless mode
   }
 
   async initialize() {
@@ -29,11 +30,14 @@ class BrowserManager {
       if (fs.existsSync(CLOAKBROWSER_PATH)) {
         console.log(`Using custom CloakBrowser binary: ${CLOAKBROWSER_PATH}`);
         this.browser = await launch({
-          executablePath: CLOAKBROWSER_PATH
+          executablePath: CLOAKBROWSER_PATH,
+          headless: this.headless
         });
       } else {
         console.log('Custom binary not found, using default cloakbrowser...');
-        this.browser = await launch();
+        this.browser = await launch({
+          headless: this.headless
+        });
       }
       
       console.log('Browser launched successfully');
