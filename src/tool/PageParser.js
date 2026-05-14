@@ -22,11 +22,15 @@ class PageParser {
    * Initialize a new page/tab for parsing
    */
   async initialize() {
+    console.log(`[${this.tag}] === PAGE PARSER INITIALIZE STARTED ===`);
+    
     if (!this.browserManager) {
+      console.error(`[${this.tag}] Error: BrowserManager is required`);
       throw new Error('BrowserManager is required');
     }
 
     // Create a new context and page
+    console.log(`[${this.tag}] Creating new browser context`);
     this.context = await this.browserManager.browser.newContext({
       locale: this.browserManager.locale || 'ja-JP',
       timezoneId: this.browserManager.timezoneId || 'Asia/Tokyo',
@@ -34,10 +38,12 @@ class PageParser {
       permissions: this.browserManager.geolocation ? ['geolocation'] : []
     });
 
+    console.log(`[${this.tag}] Creating new page`);
     this.page = await this.context.newPage();
 
     // Block unnecessary resources to accelerate page load
     // Block: images (including gif), icons, fonts (woff2), CSS stylesheets, media, etc.
+    console.log(`[${this.tag}] Setting up resource blocking`);
     await this.page.route('**/*', (route) => {
       const resourceType = route.request().resourceType();
       const url = route.request().url();
@@ -71,7 +77,7 @@ class PageParser {
       }
     });
 
-    console.log(`[${this.tag}] Page initialized`);
+    console.log(`[${this.tag}] === PAGE PARSER INITIALIZE COMPLETED ===`);
     return this.page;
   }
 
@@ -82,13 +88,25 @@ class PageParser {
    * @returns {Object} - Object containing title, text content, and URL
    */
   async parse(url, options = {}) {
+    console.log(`[${this.tag}] === PARSE STARTED ===`);
+    console.log(`[${this.tag}] URL: ${url}`);
+    console.log(`[${this.tag}] Options:`, JSON.stringify(options, null, 2));
+    
     const parseOptions = { ...this.options, ...options };
+    const startTime = Date.now();
 
     // Implement retry logic
     let lastError;
     for (let attempt = 1; attempt <= parseOptions.maxRetries + 1; attempt++) {
       try {
-        return await this._doParse(url, parseOptions);
+        console.log(`[${this.tag}] Attempt ${attempt} of ${parseOptions.maxRetries + 1}`);
+        const result = await this._doParse(url, parseOptions);
+        const duration = Date.now() - startTime;
+        console.log(`[${this.tag}] === PARSE COMPLETED ===`);
+        console.log(`[${this.tag}] Duration: ${duration}ms`);
+        console.log(`[${this.tag}] Title: ${result.title}`);
+        console.log(`[${this.tag}] Content length: ${result.content?.length || 0} characters`);
+        return result;
       } catch (error) {
         lastError = error;
         if (attempt <= parseOptions.maxRetries) {
@@ -98,6 +116,11 @@ class PageParser {
       }
     }
 
+    const duration = Date.now() - startTime;
+    console.error(`[${this.tag}] === PARSE FAILED ===`);
+    console.error(`[${this.tag}] Duration: ${duration}ms`);
+    console.error(`[${this.tag}] Error:`, lastError.message);
+    console.error(`[${this.tag}] Stack trace:`, lastError.stack);
     throw lastError;
   }
 
@@ -131,70 +154,118 @@ class PageParser {
       // Navigate to the URL with timeout
       // Use 'domcontentloaded' as default - waits for DOM to be parsed
       // For very slow pages, can override with 'commit' (faster) or 'load' (slower)
-      console.log(options)
+      console.log(`[${this.tag}] Options:`, JSON.stringify(options, null, 2));
       const navigationTimeout = options.navigationTimeout || 30000;
       const waitStrategy = options.waitUntil || 'domcontentloaded';
 
       console.log(`[${this.tag}] Navigating with strategy: ${waitStrategy}, timeout: ${navigationTimeout}ms`);
 
-      const response = await this.page.goto(url, {
-        waitUntil: waitStrategy,
-        timeout: navigationTimeout
-      });
-
-      const loadTime = Date.now() - startTime;
-      console.log(`[${this.tag}] Navigation completed in ${loadTime}ms`);
-
-      // Check HTTP status
-      if (!response.ok()) {
-        throw new Error(`HTTP ${response.status()}: ${response.statusText()}`);
+      let response;
+      let navigationError = null;
+      
+      try {
+        response = await this.page.goto(url, {
+          waitUntil: waitStrategy,
+          timeout: navigationTimeout
+        });
+      } catch (navError) {
+        navigationError = navError;
+        console.warn(`[${this.tag}] Navigation error occurred: ${navError.message}`);
+        console.warn(`[${this.tag}] Attempting to extract available content from partially loaded page...`);
       }
 
-      // Extract title
-      const title = await this.page.title();
+      const loadTime = Date.now() - startTime;
+      console.log(`[${this.tag}] Navigation phase completed in ${loadTime}ms`);
+
+      // Check if we have a response (may be null if navigation completely failed)
+      let statusCode = 0;
+      if (response) {
+        statusCode = response.status();
+        // Check HTTP status
+        if (!response.ok()) {
+          throw new Error(`HTTP ${response.status()}: ${response.statusText()}`);
+        }
+      } else if (navigationError) {
+        // If navigation failed completely, try to get current URL and status
+        console.warn(`[${this.tag}] No response object available, extracting from current page state`);
+        try {
+          const pageInfo = await this.page.evaluate(() => {
+            return {
+              url: window.location.href,
+              title: document.title,
+              hasContent: document.body && document.body.innerHTML.length > 0
+            };
+          });
+          console.log(`[${this.tag}] Current page state:`, pageInfo);
+        } catch (e) {
+          console.warn(`[${this.tag}] Could not extract page state: ${e.message}`);
+        }
+      }
+
+      // Extract title (may fail if page didn't load at all)
+      let title = '';
+      try {
+        title = await this.page.title();
+      } catch (e) {
+        console.warn(`[${this.tag}] Could not extract title: ${e.message}`);
+      }
 
       // Extract cleaned text content optimized for LLM with overall timeout
       const parseTimeout = options.parseTimeout || 60000; // Default to 60 seconds
-      const textContent = await Promise.race([
-        this.page.evaluate(() => {
-          // Remove script, style, nav, header, footer elements
-          const elementsToRemove = document.querySelectorAll('script, style, nav, header, footer, noscript, g, path, svg, img');
-          elementsToRemove.forEach(el => el.remove());
+      let textContent = '';
+      
+      try {
+        textContent = await Promise.race([
+          this.page.evaluate(() => {
+            // Remove script, style, nav, header, footer elements
+            const elementsToRemove = document.querySelectorAll('script, style, nav, header, footer, noscript, g, path, svg, img');
+            elementsToRemove.forEach(el => el.remove());
 
-          // Get main content area if available - expanded selector list
-          const selectors = [
-            'main', 'article', '.content', '#content', '.post', '.article',
-            '.main-content', '#main-content', '.entry-content', '#entry-content',
-            '[role="main"]', '.post-content', '#post-content',
-            'section.content', 'div.content-area'
-          ];
+            // Get main content area if available - expanded selector list
+            const selectors = [
+              'main', 'article', '.content', '#content', '.post', '.article',
+              '.main-content', '#main-content', '.entry-content', '#entry-content',
+              '[role="main"]', '.post-content', '#post-content',
+              'section.content', 'div.content-area'
+            ];
 
-          let mainContent = null;
-          for (const selector of selectors) {
-            mainContent = document.querySelector(selector);
-            if (mainContent) break;
-          }
+            let mainContent = null;
+            for (const selector of selectors) {
+              mainContent = document.querySelector(selector);
+              if (mainContent) break;
+            }
 
-          // If no main content area found, use body
-          if (!mainContent) {
-            mainContent = document.body;
-          }
+            // If no main content area found, use body
+            if (!mainContent) {
+              mainContent = document.body;
+            }
 
-          // Extract text with better formatting
-          const text = mainContent.innerText;
+            // Extract text with better formatting
+            const text = mainContent.innerText;
 
-          // Clean up the text
-          return text
-            .split('\n')
-            .map(line => line.trim())
-            .filter(line => line.length > 0 && line.length < 200) // Filter empty and very long lines
-            .filter((line, index, arr) => index === 0 || line !== arr[index - 1]) // Remove consecutive duplicates
-            .join('\n');
-        }),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error(`Content extraction timeout after ${parseTimeout}ms`)), parseTimeout)
-        )
-      ]);
+            // Clean up the text
+            return text
+              .split('\n')
+              .map(line => line.trim())
+              .filter(line => line.length > 0 && line.length < 200) // Filter empty and very long lines
+              .filter((line, index, arr) => index === 0 || line !== arr[index - 1]) // Remove consecutive duplicates
+              .join('\n');
+          }),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error(`Content extraction timeout after ${parseTimeout}ms`)), parseTimeout)
+          )
+        ]);
+      } catch (extractError) {
+        console.warn(`[${this.tag}] Content extraction failed: ${extractError.message}`);
+        // If content extraction fails, try to get raw body text
+        try {
+          textContent = await this.page.evaluate(() => {
+            return document.body ? document.body.innerText : '';
+          });
+        } catch (e) {
+          console.warn(`[${this.tag}] Fallback content extraction also failed: ${e.message}`);
+        }
+      }
 
       // Apply content length limit
       const maxLength = options.maxContentLength;
@@ -202,14 +273,26 @@ class PageParser {
         ? textContent.substring(0, maxLength) + '...\n[Content truncated due to length]'
         : textContent;
 
-      console.log(`[${this.tag}] Successfully parsed: ${title} (${limitedContent.length} chars)`);
+      console.log(`[${this.tag}] Successfully extracted content: ${title || 'No title'} (${limitedContent.length} chars)`);
+
+      // If there was a navigation error but we got some content, return it with a warning
+      if (navigationError && limitedContent.length > 0) {
+        console.warn(`[${this.tag}] Returning partial content due to navigation timeout/error`);
+      }
+
+      // If we have no content at all and navigation failed, throw the original error
+      if (!limitedContent && navigationError) {
+        console.error(`[${this.tag}] No content could be extracted, throwing navigation error`);
+        throw navigationError;
+      }
 
       return {
         title: title,
         content: limitedContent,
         url: url,
         tag: this.tag,
-        statusCode: response.status()
+        statusCode: statusCode,
+        navigationError: navigationError ? navigationError.message : null
       };
     } catch (error) {
       console.error(`[${this.tag}] Error parsing URL ${url}:`, error.message);
@@ -247,17 +330,27 @@ class PageParser {
    * Destroy the page and clean up resources
    */
   async destroy() {
+    console.log(`[${this.tag}] === PAGE PARSER DESTROY STARTED ===`);
+    
     if (this.page) {
+      console.log(`[${this.tag}] Closing page`);
       await this.page.close();
       this.page = null;
-      console.log(`[${this.tag}] Page destroyed`);
+      console.log(`[${this.tag}] Page closed successfully`);
+    } else {
+      console.log(`[${this.tag}] No page to close`);
     }
 
     if (this.context) {
+      console.log(`[${this.tag}] Closing context`);
       await this.context.close();
       this.context = null;
-      console.log(`[${this.tag}] Context closed`);
+      console.log(`[${this.tag}] Context closed successfully`);
+    } else {
+      console.log(`[${this.tag}] No context to close`);
     }
+    
+    console.log(`[${this.tag}] === PAGE PARSER DESTROY COMPLETED ===`);
   }
 }
 
