@@ -82,25 +82,31 @@ class DeepSearch {
    * @returns {Array<Object>} - Array of documents with title, abstract, url, and content
    */
   async deepSearch(keyword, options = {}) {
+    console.log(`[DeepSearch] === DEEP SEARCH STARTED ===`);
+    
     const {
       engines = ['google'],
       maxResultsPerEngine = 5,
       parserNum = this.parserNum
     } = options;
 
+    console.log(`[DeepSearch] Keyword: "${keyword}"`);
+    console.log(`[DeepSearch] Engines: ${engines.join(', ')}`);
+    console.log(`[DeepSearch] Max results per engine: ${maxResultsPerEngine}`);
+    console.log(`[DeepSearch] Parallel parsers: ${parserNum}`);
+    console.log(`[DeepSearch] Options:`, JSON.stringify(options, null, 2));
+
+    const startTime = Date.now();
+
     // Ensure browser is initialized
     await this.initialize();
-
-    console.log(`Starting deep search for: "${keyword}"`);
-    console.log(`Using engines: ${engines.join(', ')}`);
-    console.log(`Max results per engine: ${maxResultsPerEngine}`);
-    console.log(`Parallel parsers: ${parserNum}`);
 
     // Step 1: Collect search results from all specified engines
     const allResults = [];
     
     for (const engineName of engines) {
       try {
+        console.log(`[DeepSearch] Processing engine: ${engineName}`);
         const engine = this.getEngine(engineName);
         
         // Create a temporary page for search
@@ -130,6 +136,7 @@ class DeepSearch {
         engine.browserManager.page = page;
 
         // Perform search
+        console.log(`[DeepSearch] Executing search on ${engineName} for "${keyword}"`);
         const searchResult = await engine.search(keyword);
         
         // Restore original page
@@ -146,16 +153,17 @@ class DeepSearch {
         }));
 
         allResults.push(...limitedResults);
-        console.log(`Engine '${engineName}' returned ${limitedResults.length} results`);
+        console.log(`[DeepSearch] Engine '${engineName}' returned ${limitedResults.length} results`);
       } catch (error) {
-        console.error(`Error with engine '${engineName}':`, error.message);
+        console.error(`[DeepSearch] Error with engine '${engineName}':`, error.message);
+        console.error(`[DeepSearch] Stack trace:`, error.stack);
       }
     }
 
-    console.log(`Total search results collected: ${allResults.length}`);
+    console.log(`[DeepSearch] Total search results collected: ${allResults.length}`);
 
     if (allResults.length === 0) {
-      console.warn('No search results found');
+      console.warn('[DeepSearch] No search results found');
       return [];
     }
 
@@ -165,7 +173,7 @@ class DeepSearch {
 
     for (let i = 0; i < allResults.length; i += batchSize) {
       const batch = allResults.slice(i, i + batchSize);
-      console.log(`Processing batch ${Math.floor(i / batchSize) + 1} (${batch.length} pages)`);
+      console.log(`[DeepSearch] Processing batch ${Math.floor(i / batchSize) + 1} (${batch.length} pages)`);
 
       // Create parsers for this batch
       const parsers = batch.map((result, index) => {
@@ -178,7 +186,9 @@ class DeepSearch {
         const parsePromises = batch.map(async (result, index) => {
           const parser = parsers[index];
           try {
+            console.log(`[DeepSearch] Parsing URL: ${result.url}`);
             const parsed = await parser.parse(result.url);
+            console.log(`[DeepSearch] Successfully parsed: ${parsed.title || result.title}`);
             return {
               title: parsed.title || result.title,
               abstract: result.snippet || '',
@@ -187,7 +197,7 @@ class DeepSearch {
               engine: result.engine
             };
           } catch (error) {
-            console.error(`Failed to parse ${result.url}:`, error.message);
+            console.error(`[DeepSearch] Failed to parse ${result.url}:`, error.message);
             // Return partial result even if parsing fails
             return {
               title: result.title,
@@ -205,12 +215,17 @@ class DeepSearch {
 
         const batchDocuments = await Promise.all(parsePromises);
         documents.push(...batchDocuments);
+        console.log(`[DeepSearch] Batch completed, total documents so far: ${documents.length}`);
       } catch (error) {
-        console.error('Error processing batch:', error.message);
+        console.error('[DeepSearch] Error processing batch:', error.message);
+        console.error('[DeepSearch] Stack trace:', error.stack);
       }
     }
 
-    console.log(`Deep search completed. Total documents: ${documents.length}`);
+    const duration = Date.now() - startTime;
+    console.log(`[DeepSearch] === DEEP SEARCH COMPLETED ===`);
+    console.log(`[DeepSearch] Duration: ${duration}ms`);
+    console.log(`[DeepSearch] Total documents: ${documents.length}`);
     return documents;
   }
 

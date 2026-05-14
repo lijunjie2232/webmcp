@@ -163,6 +163,11 @@ class SearchMCPServer {
               type: 'boolean',
               description: 'Run browser in headless mode (true) or with visible window (false)',
               default: true
+            },
+            maxRetries: {
+              type: 'number',
+              description: 'Maximum number of retry attempts if parsing fails',
+              default: 1
             }
           },
           required: ['url']
@@ -172,6 +177,13 @@ class SearchMCPServer {
   }
 
   async handleToolCall(toolName, args) {
+    console.log(`[MCP] === TOOL CALL STARTED ===`);
+    console.log(`[MCP] Tool: ${toolName}`);
+    console.log(`[MCP] Arguments:`, JSON.stringify(args, null, 2));
+    console.log(`[MCP] Timestamp: ${new Date().toISOString()}`);
+    
+    const startTime = Date.now();
+    
     try {
       // Normalize input: support both 'query' and 'keyword' parameters
       const normalizedArgs = { ...args };
@@ -190,97 +202,166 @@ class SearchMCPServer {
         throw new Error(`Missing required parameter: 'keyword' or 'query' must be provided for ${toolName}`);
       }
       
+      let result;
       switch (toolName) {
         case 'search':
+          console.log(`[MCP] Executing search tool`);
+          console.log(`[MCP] Keyword: ${normalizedArgs.keyword}`);
+          console.log(`[MCP] Engine: ${normalizedArgs.engine || 'yahoojapan'}`);
           if (normalizedArgs.language) {
+            console.log(`[MCP] Language override: ${normalizedArgs.language}`);
             await this.setLanguage(normalizedArgs.language);
           }
-          return await this.searchManager.search(normalizedArgs.keyword, normalizedArgs.engine || 'yahoojapan');
+          result = await this.searchManager.search(normalizedArgs.keyword, normalizedArgs.engine || 'yahoojapan');
+          console.log(`[MCP] Search completed, found ${result.results?.length || 0} results`);
+          break;
         
         case 'search_multiple':
+          console.log(`[MCP] Executing search_multiple tool`);
+          console.log(`[MCP] Keyword: ${normalizedArgs.keyword}`);
+          console.log(`[MCP] Engines: ${(normalizedArgs.engines || ['google', 'bing', 'duckduckgo', 'yahoojapan']).join(', ')}`);
           if (normalizedArgs.language) {
+            console.log(`[MCP] Language override: ${normalizedArgs.language}`);
             await this.setLanguage(normalizedArgs.language);
           }
-          return await this.searchManager.searchMultipleEngines(
+          result = await this.searchManager.searchMultipleEngines(
             normalizedArgs.keyword, 
             normalizedArgs.engines || ['google', 'bing', 'duckduckgo', 'yahoojapan']
           );
+          console.log(`[MCP] Multiple search completed across ${Object.keys(result).length} engines`);
+          break;
         
         case 'deep_search':
+          console.log(`[MCP] Executing deep_search tool`);
+          console.log(`[MCP] Keyword: ${normalizedArgs.keyword}`);
+          console.log(`[MCP] Engines: ${(normalizedArgs.engines || ['google']).join(', ')}`);
+          console.log(`[MCP] Max results per engine: ${normalizedArgs.maxResultsPerEngine || 5}`);
+          console.log(`[MCP] Parser count: ${normalizedArgs.parserNum || 3}`);
           if (normalizedArgs.language) {
+            console.log(`[MCP] Language override: ${normalizedArgs.language}`);
             await this.setLanguage(normalizedArgs.language);
           }
-          return await this.deepSearch.deepSearch(normalizedArgs.keyword, {
+          result = await this.deepSearch.deepSearch(normalizedArgs.keyword, {
             engines: normalizedArgs.engines || ['google'],
             maxResultsPerEngine: normalizedArgs.maxResultsPerEngine || 5,
             parserNum: normalizedArgs.parserNum || 3
           });
+          console.log(`[MCP] Deep search completed, found ${result.length} documents`);
+          break;
         
         case 'get_available_engines':
-          return {
+          console.log(`[MCP] Executing get_available_engines tool`);
+          result = {
             engines: this.searchManager.getAvailableEngines()
           };
+          console.log(`[MCP] Available engines: ${result.engines.join(', ')}`);
+          break;
         
         case 'set_language':
-          return await this.setLanguage(args.language);
+          console.log(`[MCP] Executing set_language tool`);
+          console.log(`[MCP] Setting language to: ${args.language}`);
+          result = await this.setLanguage(args.language);
+          console.log(`[MCP] Language set successfully`);
+          break;
         
         case 'parse_url':
-          return await this.parsePage(normalizedArgs.url, {
+          console.log(`[MCP] Executing parse_url tool`);
+          console.log(`[MCP] URL: ${normalizedArgs.url}`);
+          console.log(`[MCP] Options:`, JSON.stringify({
             maxContentLength: normalizedArgs.maxContentLength,
             parseTimeout: normalizedArgs.parseTimeout,
             navigationTimeout: normalizedArgs.navigationTimeout,
             waitUntil: normalizedArgs.waitUntil,
             headless: normalizedArgs.headless
+          }, null, 2));
+          result = await this.parsePage(normalizedArgs.url, {
+            maxContentLength: normalizedArgs.maxContentLength,
+            parseTimeout: normalizedArgs.parseTimeout,
+            navigationTimeout: normalizedArgs.navigationTimeout,
+            waitUntil: normalizedArgs.waitUntil,
+            headless: normalizedArgs.headless,
+            maxRetries: normalizedArgs.maxRetries
           });
+          console.log(`[MCP] Page parsed successfully: ${result.title}`);
+          break;
         
         default:
           throw new Error(`Unknown tool: ${toolName}`);
       }
+      
+      const duration = Date.now() - startTime;
+      console.log(`[MCP] === TOOL CALL COMPLETED ===`);
+      console.log(`[MCP] Tool: ${toolName}`);
+      console.log(`[MCP] Duration: ${duration}ms`);
+      console.log(`[MCP] Result type: ${typeof result}`);
+      console.log(`[MCP] Result preview:`, JSON.stringify(result).substring(0, 300) + (JSON.stringify(result).length > 300 ? '...' : ''));
+      
+      return result;
     } catch (error) {
-      console.error(`Error handling tool call ${toolName}:`, error.message);
+      const duration = Date.now() - startTime;
+      console.error(`[MCP] === TOOL CALL FAILED ===`);
+      console.error(`[MCP] Tool: ${toolName}`);
+      console.error(`[MCP] Error: ${error.message}`);
+      console.error(`[MCP] Duration: ${duration}ms`);
+      console.error(`[MCP] Stack trace:`, error.stack);
       throw error;
     }
   }
 
   async setLanguage(language) {
+    console.log(`[MCP] === SET LANGUAGE STARTED ===`);
+    console.log(`[MCP] Current language: ${this.currentLanguage}`);
+    console.log(`[MCP] New language: ${language}`);
+    
     try {
-      console.log(`Changing language to: ${language}`);
       this.currentLanguage = language;
       
       // Update the browser manager locale in both searchManager and deepSearch
+      let enginesUpdated = 0;
       if (this.searchManager.searchEngines) {
         for (const engine of Object.values(this.searchManager.searchEngines)) {
           if (engine.browserManager) {
             engine.browserManager.locale = language;
+            enginesUpdated++;
           }
         }
       }
+      console.log(`[MCP] Updated ${enginesUpdated} engines in searchManager`);
       
       if (this.deepSearch.browserManager) {
         this.deepSearch.browserManager.locale = language;
+        console.log(`[MCP] Updated deepSearch browser manager locale`);
       }
       
       // Recreate engines in deepSearch to apply new locale
+      const oldEngineCount = Object.keys(this.deepSearch.engines).length;
       this.deepSearch.engines = {};
+      console.log(`[MCP] Cleared ${oldEngineCount} engines from deepSearch`);
       
-      console.log(`Language successfully changed to: ${language}`);
+      console.log(`[MCP] === SET LANGUAGE COMPLETED ===`);
+      console.log(`[MCP] Language successfully changed to: ${language}`);
       return {
         success: true,
         language: language,
         message: `Language set to ${language}`
       };
     } catch (error) {
-      console.error(`Error setting language:`, error.message);
+      console.error(`[MCP] === SET LANGUAGE FAILED ===`);
+      console.error(`[MCP] Error setting language:`, error.message);
+      console.error(`[MCP] Stack trace:`, error.stack);
       throw error;
     }
   }
 
   async parsePage(url, options = {}) {
+    console.log(`[MCP] === PARSE PAGE STARTED ===`);
+    console.log(`[MCP] URL: ${url}`);
+    console.log(`[MCP] Options:`, JSON.stringify(options, null, 2));
+    
     try {
-      console.log(`Parsing page: ${url}`);
-      
       // Initialize page parser if not already done
       if (!this.pageParser) {
+        console.log(`[MCP] Initializing page parser for the first time`);
         // Create a temporary browser manager for parsing
         const BrowserManager = (await import('./BrowserManager.js')).default;
         const browserManager = new BrowserManager({
@@ -288,19 +369,28 @@ class SearchMCPServer {
           timezoneId: this.getTimezoneForLocale(this.currentLanguage),
           headless: options.headless !== undefined ? options.headless : true
         });
+        console.log(`[MCP] Creating browser manager with locale: ${this.currentLanguage}`);
         await browserManager.initialize();
+        console.log(`[MCP] Browser manager initialized`);
         
         this.pageParser = new PageParser(browserManager, 'mcp-parser');
         await this.pageParser.initialize();
+        console.log(`[MCP] Page parser initialized`);
       }
       
       // Parse the page
+      console.log(`[MCP] Starting page parsing`);
       const result = await this.pageParser.parse(url, options);
       
-      console.log(`Successfully parsed page: ${result.title}`);
+      console.log(`[MCP] === PARSE PAGE COMPLETED ===`);
+      console.log(`[MCP] Successfully parsed page: ${result.title}`);
+      console.log(`[MCP] Content length: ${result.content?.length || 0} characters`);
+      console.log(`[MCP] Status code: ${result.statusCode}`);
       return result;
     } catch (error) {
-      console.error(`Error parsing page:`, error.message);
+      console.error(`[MCP] === PARSE PAGE FAILED ===`);
+      console.error(`[MCP] Error parsing page:`, error.message);
+      console.error(`[MCP] Stack trace:`, error.stack);
       throw error;
     }
   }
