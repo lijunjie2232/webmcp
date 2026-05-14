@@ -155,7 +155,7 @@ class PageParser {
       // Use 'domcontentloaded' as default - waits for DOM to be parsed
       // For very slow pages, can override with 'commit' (faster) or 'load' (slower)
       console.log(`[${this.tag}] Options:`, JSON.stringify(options, null, 2));
-      const navigationTimeout = options.navigationTimeout || 30000;
+      const navigationTimeout = options.navigationTimeout || 5000; // Default to 5 seconds
       const waitStrategy = options.waitUntil || 'domcontentloaded';
 
       console.log(`[${this.tag}] Navigating with strategy: ${waitStrategy}, timeout: ${navigationTimeout}ms`);
@@ -211,7 +211,7 @@ class PageParser {
       }
 
       // Extract cleaned text content optimized for LLM with overall timeout
-      const parseTimeout = options.parseTimeout || 60000; // Default to 60 seconds
+      const parseTimeout = options.parseTimeout || 7000; // Default to 7 seconds
       let textContent = '';
       
       try {
