@@ -4,6 +4,7 @@ async function testCommitWaitStrategy() {
   const server = new SearchMCPServer();
   
   const testUrls = [
+    'https://zexy.net/mar/manual/registration/marriage.html',
     'https://www.google.com/search?q=playwright',
     'https://www.bing.com/search?q=playwright',
     'https://www.bing.com/ck/a?!&&p=faa29f70d72c0783649016d81b1d3e43a20891a9e47be696f60f0c231c3ce0c6JmltdHM9MTc3ODU0NDAwMA&ptn=3&ver=2&hsh=4&fclid=141b7de3-a66f-65d5-0aa4-6aaca743649a&u=a1aHR0cHM6Ly93d3cudmFtcC5qcC9hcmNoaXZlcy8yNTU5'
@@ -21,7 +22,7 @@ async function testCommitWaitStrategy() {
       const result = await server.handleToolCall('parse_url', { 
         url: url,
         waitUntil: 'domcontentloaded',
-        navigationTimeout: 30000,
+        navigationTimeout: 5000,
         headless: true,
         maxRetries: 0  // Disable retries to see immediate results
       });
@@ -52,7 +53,7 @@ async function testCommitWaitStrategy() {
         const result = await server.handleToolCall('parse_url', { 
           url: url,
           waitUntil: 'domcontentloaded',
-          navigationTimeout: 30000,
+          navigationTimeout: 5000,
           maxRetries: 0
         });
         
